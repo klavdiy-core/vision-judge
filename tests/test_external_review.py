@@ -41,5 +41,26 @@ class Schema(unittest.TestCase):
         self.assertEqual(vj.judge(SPEC, inv(button_fully_visible=False))[0], "FAIL")
 
 
+class ReviewEverywhere(unittest.TestCase):
+    """Tsaplya's notes on 989ad09."""
+
+    def test_an_unreadable_description_is_review_not_fail(self):
+        v, why, _ = vj.check_one("x.png", SPEC, "m", asker=lambda *a: "I could not see the screen")
+        self.assertEqual(v, "REVIEW")
+
+    def test_score_counts_reviews_apart(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "answers.json"), "w", encoding="utf-8") as f:
+                json.dump({"s1": "intact", "s2": "cut_button"}, f)
+            with open(os.path.join(d, "results.jsonl"), "w", encoding="utf-8") as f:
+                for s, v in (("s1", "REVIEW"), ("s2", "REVIEW")):
+                    f.write(json.dumps({"screen": s, "arm": "compile", "model": "m", "verdict": v}) + "\n")
+            sc = vj.score(d)["compile (m)"]
+            self.assertEqual(sc["review"], 2)
+            self.assertEqual(sc["false_alarm"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -124,7 +124,7 @@ def check_one(image, spec, model, asker=ask):
     try:
         inv = parse_inventory(text)
     except ValueError as e:
-        return "FAIL", [f"the description was not readable JSON ({e})"], text
+        return "REVIEW", [f"the description was not readable JSON ({e}): not judged"], text   # cannot judge = REVIEW (Tsaplya)
     v, why = judge(spec, inv)
     return v, why, inv
 
@@ -175,10 +175,11 @@ def score(corpus):
     rows = [json.loads(l) for l in open(os.path.join(corpus, "results.jsonl"), encoding="utf-8")]
     out = {}
     for r in rows:
-        a = out.setdefault((r["arm"], r["model"]), {"caught": 0, "broken": 0, "false_alarm": 0, "intact": 0,
+        a = out.setdefault((r["arm"], r["model"]), {"caught": 0, "broken": 0, "false_alarm": 0, "intact": 0, "review": 0,
                                                    "missed": [], "by_break": {}})
         broken = truth[r["screen"]] != "intact"
         fail = r["verdict"] == "FAIL"
+        a["review"] += r["verdict"] == "REVIEW"           # said apart: a model full of REVIEWs is not just a weak catcher
         if broken:
             a["broken"] += 1
             a["caught"] += fail
@@ -235,7 +236,7 @@ def main(argv=None):
         sc = score(a.corpus)
         for name, v in sc.items():
             print(f"{name:<34} caught {v['caught']}/{v['broken']}  false alarms {v['false_alarm']}/{v['intact']}"
-                  f"  missed {', '.join(v['missed']) or '-'}")
+                  f"  review {v['review']}  missed {', '.join(v['missed']) or '-'}")
         if a.png:
             chart(sc, a.png)
     else:
