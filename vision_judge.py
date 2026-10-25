@@ -20,7 +20,7 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 EYES = ("You are the visual QA step of a coding agent. This screenshot shows the app screen it just built.{spec} "
         "Does the screen look correct and finished? Answer PASS or FAIL on the first line, then one short reason.")
@@ -73,8 +73,32 @@ def _norm(s):
     return re.sub(r"[\s•·*\-]+", " ", str(s or "")).strip().lower()
 
 
+SCHEMA = {"title": str, "labels": list, "button": (str, type(None)), "button_fully_visible": bool,
+          "list_items": list, "problems_seen": list}
+
+
+def schema_problems(inv):
+    """What is missing or of the wrong type in a description. Only a description that is complete can be judged:
+    a missing button_fully_visible, or "false" as a string, used to read as PASS (external review, 25.10)."""
+    if not isinstance(inv, dict):
+        return [f"the description is {type(inv).__name__}, not an object"]
+    out = []
+    for key, want in SCHEMA.items():
+        if key not in inv:
+            out.append(f"{key} is missing")
+        elif not isinstance(inv[key], want) or (want is bool and not isinstance(inv[key], bool)):
+            out.append(f"{key} is {type(inv[key]).__name__} ({inv[key]!r}), not {getattr(want, '__name__', 'str or null')}")
+        elif want is list and not all(isinstance(x, str) for x in inv[key]):
+            out.append(f"{key} holds something other than text")
+    return out
+
+
 def judge(spec, inv):
-    """The judge is code: every difference between the description and the spec is a reason to fail."""
+    """The judge is code: every difference between the description and the spec is a reason to fail. A
+    description that is incomplete or mistyped is not judged at all: REVIEW, never PASS."""
+    bad = schema_problems(inv)
+    if bad:
+        return "REVIEW", bad
     why = []
     if _norm(inv.get("title")) != _norm(spec["title"]):
         why.append(f"title reads {inv.get('title')!r}, spec says {spec['title']!r}")
@@ -220,7 +244,7 @@ def main(argv=None):
         print(v)
         for w in why:
             print(" -", w)
-        return 0 if v == "PASS" else 1
+        return {"PASS": 0, "FAIL": 1}.get(v, 2)        # REVIEW / anything unknown: 2, never a pass
     return 0
 
 
