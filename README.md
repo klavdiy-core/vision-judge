@@ -68,7 +68,7 @@ A spec is JSON: `{"title": "...", "fields": [labels], "button": "...", "items": 
 
 `check` answers PASS (exit 0), FAIL (exit 1) or REVIEW (exit 2). REVIEW means the description came back incomplete
 or mistyped (a missing `button_fully_visible`, `"false"` as text, a list given as a string): it is not judged, and it
-is never a pass. Before 0.1.1 such a description could pass — found by an external review, fixed in <commit>.
+is never a pass. Before 0.1.1 such a description could pass — found by an external review, fixed in 989ad09.
 
 ## Test
 
